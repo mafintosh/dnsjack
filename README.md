@@ -1,6 +1,11 @@
 # DNSJack
 
 A simple DNS proxy that lets you intercept domains and route them to whatever IP you decide.
+
+It's available through npm:
+
+	npm install dnsjack
+
 It's easy to use:
 
 ``` js
