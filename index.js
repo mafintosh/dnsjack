@@ -230,7 +230,7 @@ exports.createServer = function(proxy) {
 			return that;
 		}
 
-		from = new RegExp('^'+from.replace(/\./g, '\\.').replace(/\*\\\./g, '(.+)\\.')+'$', 'i');
+		from = from === '*' ? /.?/ : new RegExp('^'+from.replace(/\./g, '\\.').replace(/\*\\\./g, '(.+)\\.')+'$', 'i');
 		to = numify(to);
 
 		routes.push({from:from, to:to});
