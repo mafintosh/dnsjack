@@ -1,4 +1,4 @@
-var router = require('./index');
+var router = require('../index');
 
 var dns = router.createServer();
 
