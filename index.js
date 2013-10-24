@@ -1,11 +1,12 @@
-var common = require('common');
+var EventEmitter = require('events').EventEmitter;
 var dgram = require('dgram');
 var net = require('net');
 var dns = require('dns');
 
-var bitSlice = function(b, offset, length) {	
+var bitSlice = function(b, offset, length) {
 	return (b >>> (7-(offset+length-1))) & ~(0xff << length);
 };
+
 var numify = function(ip) {
 	ip = ip.split('.').map(function(n) {
 		return parseInt(n, 10);
@@ -21,6 +22,7 @@ var numify = function(ip) {
 
 	return result;
 };
+
 var domainify = function(qname) {
 	var parts = [];
 
@@ -35,6 +37,7 @@ var domainify = function(qname) {
 
 	return parts.join('.');
 };
+
 var qnameify = function(domain) {
 	var qname = new Buffer(domain.length+2);
 	var offset = 0;
@@ -74,7 +77,7 @@ var parse = function(buf) {
 	header.ancount = buf.slice(6,8);
 	header.nscount = buf.slice(8,10);
 	header.arcount = buf.slice(10, 12);
-	
+
 	question.qname = buf.slice(12, buf.length-4);
 	question.qtype = buf.slice(buf.length-4, buf.length-2);
 	question.qclass = buf.slice(buf.length-2, buf.length);
@@ -95,7 +98,7 @@ var responseBuffer = function(query) {
     }
 
 	var buf = new Buffer(length);
-    
+
 	header.id.copy(buf, 0, 0, 2);
 
 	buf[2] = 0x00 | header.qr << 7 | header.opcode << 3 | header.aa << 2 | header.tc << 1 | header.rd;
@@ -149,7 +152,7 @@ var response = function(query, to) {
 	header.rcode = 0;
 	header.qdcount = 1;
 	header.nscount = 0;
-	header.arcount = 0; 
+	header.arcount = 0;
 
 	question.qname = query.question.qname;
 	question.qtype = query.question.qtype;
@@ -157,7 +160,7 @@ var response = function(query, to) {
 
 	response.rr = rrs;
 
-	return responseBuffer(response);	
+	return responseBuffer(response);
 };
 
 var resolve = function(qname, to) {
@@ -169,7 +172,7 @@ var resolve = function(qname, to) {
 	r.ttl = 1;
 	r.rdlength = 4;
 	r.rdata = to;
-	
+
 	return [r];
 };
 
@@ -177,7 +180,7 @@ var resolve = function(qname, to) {
 exports.createServer = function(proxy) {
 	proxy = proxy || '8.8.8.8';
 
-	var that = common.createEmitter();
+	var that = new EventEmitter();
 	var server = dgram.createSocket('udp4');
 	var routes = [];
 
@@ -187,7 +190,7 @@ exports.createServer = function(proxy) {
 		var to;
 
 		var respond = function(buf) {
-			server.send(buf, 0, buf.length, rinfo.port, rinfo.address);		
+			server.send(buf, 0, buf.length, rinfo.port, rinfo.address);
 		};
 
 		for (var i = 0; i < routes.length; i++) {
@@ -230,16 +233,16 @@ exports.createServer = function(proxy) {
 			return that;
 		}
 
-		from = from === '*' ? /.?/ : new RegExp('^'+from.replace(/\./g, '\\.').replace(/\*\\\./g, '(.+)\\.')+'$', 'i');
+		from = from === '*' ? /.?/ :new RegExp('^'+from.replace(/\./g, '\\.').replace(/\*\\\./g, '(.+)\\.')+'$', 'i');
 		to = numify(to);
 
 		routes.push({from:from, to:to});
 
 		return that;
 	};
+
 	that.listen = function(port) {
 		server.bind(port || 53);
-
 		return that;
 	};
 
