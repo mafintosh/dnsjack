@@ -1,8 +1,6 @@
 var jack = require('../').createServer();
 
-jack.route('www.google.com', '127.0.0.1'); // route all requests to www.google.com to localhost
-
-jack.route('*.google.com', function(addr, callback) { // supporting async lookup
+jack.route(['google.com', '*.google.com'], function(addr, callback) { // supporting async lookup
 	callback(null, '127.0.0.1');
 });
 
