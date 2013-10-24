@@ -55,6 +55,12 @@ var qnameify = function(domain) {
 	return qname;
 };
 
+var functionify = function(val) {
+	return function(addr, callback) {
+		callback(null, val);
+	};
+};
+
 var parse = function(buf) {
 	var header = {};
 	var question = {};
@@ -81,7 +87,6 @@ var parse = function(buf) {
 	question.qname = buf.slice(12, buf.length-4);
 	question.qtype = buf.slice(buf.length-4, buf.length-2);
 	question.qclass = buf.slice(buf.length-2, buf.length);
-
 
 	return {header:header, question:question};
 };
@@ -176,6 +181,10 @@ var resolve = function(qname, to) {
 	return [r];
 };
 
+var lookup = function(addr, callback) {
+	if (net.isIP(addr)) return callback(null, addr);
+	dns.lookup(addr, callback);
+};
 
 exports.createServer = function(proxy) {
 	proxy = proxy || '8.8.8.8';
@@ -187,56 +196,62 @@ exports.createServer = function(proxy) {
 	server.on('message', function (message, rinfo) {
 		var query = parse(message);
 		var domain = domainify(query.question.qname);
-		var to;
+		var route;
+
+		that.emit('resolve', domain);
 
 		var respond = function(buf) {
 			server.send(buf, 0, buf.length, rinfo.port, rinfo.address);
 		};
 
+		var onerror = function(err) {
+			that.emit('error', err);
+		};
+
+		var onproxy = function() {
+			var sock = dgram.createSocket('udp4');
+
+			sock.send(message, 0, message.length, 53, proxy);
+			sock.on('error', onerror);
+			sock.on('message', function(response) {
+				respond(response);
+				sock.close();
+			});
+		};
+
 		for (var i = 0; i < routes.length; i++) {
-			if (routes[i].from.test(domain)) {
-				to = routes[i].to;
+			if (routes[i].pattern.test(domain)) {
+				route = routes[i].route;
 				break;
 			}
 		}
-		if (to) {
-			that.emit('route', domain, to);
-			respond(response(query, to));
-			return;
-		}
 
-		var fallback = dgram.createSocket('udp4');
+		if (!route) return onproxy();
 
-		that.emit('resolve', domain);
+		route(domain, function(err, to) {
+			if (err) return onerror(err);
+			if (!to) return onproxy();
 
-		fallback.send(message, 0, message.length, 53, proxy);
-		fallback.on('message', function(response) {
-			respond(response);
-			fallback.close();
+			lookup(to, function() {
+				that.emit('route', domain, to);
+				respond(response(query, numify(to)));
+			});
 		});
+
 	});
 
-	that.route = function(from, to) {
-		if (Array.isArray(from)) {
-			from.forEach(function(item) {
-				that.route(item, to);
+	that.route = function(pattern, route) {
+		if (Array.isArray(pattern)) {
+			pattern.forEach(function(item) {
+				that.route(item, route);
 			});
 			return that;
 		}
-		if (!net.isIP(to)) {
-			dns.lookup(to, function(err, ip) {
-				if (err) {
-					return;
-				}
-				that.route(from, ip);
-			});
-			return that;
-		}
+		if (typeof pattern === 'function') return that.route('*', pattern);
+		if (typeof route === 'string') return that.route(pattern, functionify(route));
 
-		from = from === '*' ? /.?/ :new RegExp('^'+from.replace(/\./g, '\\.').replace(/\*\\\./g, '(.+)\\.')+'$', 'i');
-		to = numify(to);
-
-		routes.push({from:from, to:to});
+		pattern = pattern === '*' ? /.?/ : new RegExp('^'+pattern.replace(/\./g, '\\.').replace(/\*\\\./g, '(.+)\\.')+'$', 'i');
+		routes.push({pattern:pattern, route:route});
 
 		return that;
 	};
