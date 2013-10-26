@@ -14,6 +14,16 @@ var jack = require('dnsjack').createServer();
 jack.route('www.google.com', '127.0.0.1'); // route all requests to www.google.com to localhost
 jack.listen(); // it listens on the standard DNS port of 53 per default
 
+// route all domains to 127.0.0.1
+jack.route(function(domain, callback) {
+	callback(null, '127.0.0.1');
+});
+
+// route all google domains to 127.0.0.1
+jack.route(['google.com', '*.google.com'], function(domain, callback) {
+	callback(null, '127.0.0.1');
+});
+
 // now all requests to google.com should be routed localhost
 require('http').createServer(function(req, res) {
 	res.writeHead(200);
