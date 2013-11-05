@@ -232,9 +232,10 @@ exports.createServer = function(proxy) {
 			if (err) return onerror(err);
 			if (!to) return onproxy();
 
-			lookup(to, function() {
-				that.emit('route', domain, to);
-				respond(response(query, numify(to)));
+			lookup(to, function(err, addr) {
+				if (err) return onerror(err);
+				that.emit('route', domain, addr);
+				respond(response(query, numify(addr)));
 			});
 		});
 
