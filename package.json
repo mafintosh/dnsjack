@@ -1,8 +1,13 @@
 {
- "name":"dnsjack",
- "version":"0.2.1",
- "description":"A simple DNS proxy that lets you intercept domains and route them to whatever IP you decide",
- "keywords": ["dns", "proxy", "intercept", "debug"],
- "author": "Mathias Buus Madsen <mathiasbuus@gmail.com>",
- "repository": "git://github.com/mafintosh/dnsjack.git"
+  "name": "dnsjack",
+  "version": "0.3.0",
+  "description": "A simple DNS proxy that lets you intercept domains and route them to whatever IP you decide",
+  "keywords": [
+    "dns",
+    "proxy",
+    "intercept",
+    "debug"
+  ],
+  "author": "Mathias Buus Madsen <mathiasbuus@gmail.com>",
+  "repository": "git://github.com/mafintosh/dnsjack.git"
 }
