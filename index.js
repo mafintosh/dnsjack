@@ -261,6 +261,11 @@ exports.createServer = function(proxy) {
 		server.bind(port || 53);
 		return that;
 	};
+	
+	that.close = function(callback) {
+		server.close(callback);
+		return that;
+	};
 
 	return that;
 };
