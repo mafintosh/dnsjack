@@ -138,11 +138,11 @@ var responseBuffer = function(query) {
     return buf;
 };
 
-var response = function(query, to) {
+var response = function(query, ttl, to) {
 	var response = {};
 	var header = response.header = {};
 	var question = response.question = {};
-	var rrs = resolve(query.question.qname, to);
+	var rrs = resolve(query.question.qname, ttl, to);
 
 	header.id = query.header.id;
 	header.ancount = rrs.length;
@@ -168,13 +168,13 @@ var response = function(query, to) {
 	return responseBuffer(response);
 };
 
-var resolve = function(qname, to) {
+var resolve = function(qname, ttl, to) {
 	var r = {};
 
 	r.qname = qname;
 	r.qtype = 1;
 	r.qclass = 1;
-	r.ttl = 1;
+	r.ttl = ttl;
 	r.rdlength = 4;
 	r.rdata = to;
 
@@ -198,7 +198,12 @@ exports.createServer = function(proxy) {
 		var domain = domainify(query.question.qname);
 		var route;
 
-		that.emit('resolve', domain);
+		var routeData = {
+			domain: domain,
+			rinfo: rinfo
+		};
+
+		that.emit('resolve', routeData);
 
 		var respond = function(buf) {
 			server.send(buf, 0, buf.length, rinfo.port, rinfo.address);
@@ -228,14 +233,24 @@ exports.createServer = function(proxy) {
 
 		if (!route) return onproxy();
 
-		route(domain, function(err, to) {
-			if (err) return onerror(err);
-			if (!to) return onproxy();
+		route(routeData, function (err, to) {
+			var toIp, ttl;
 
-			lookup(to, function(err, addr) {
+			if (typeof to === 'string') {
+				toIp = to;
+				ttl = 1;
+			}else{
+				toIp = to.ip;
+				ttl = to.ttl;
+			}
+
+			if (err) return onerror(err);
+			if (!toIp) return onproxy();
+
+			lookup(toIp, function(err, addr) {
 				if (err) return onerror(err);
 				that.emit('route', domain, addr);
-				respond(response(query, numify(addr)));
+				respond(response(query, ttl, numify(addr)));
 			});
 		});
 
@@ -261,7 +276,7 @@ exports.createServer = function(proxy) {
 		server.bind(port || 53);
 		return that;
 	};
-	
+
 	that.close = function(callback) {
 		server.close(callback);
 		return that;
