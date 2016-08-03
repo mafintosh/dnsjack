@@ -233,9 +233,9 @@ exports.createServer = function(proxy) {
 
 		if (!route) return onproxy();
 
-		route(routeData, function (err, to) {
-			var toIp,
-				ttl;
+		route(routeData, function(err, to) {
+			var toIp;
+			var ttl;
 
 			if (typeof to === 'string') {
 				toIp = to;
