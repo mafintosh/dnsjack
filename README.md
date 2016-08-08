@@ -15,12 +15,12 @@ jack.route('www.google.com', '127.0.0.1'); // route all requests to www.google.c
 jack.listen(); // it listens on the standard DNS port of 53 per default
 
 // route all domains to 127.0.0.1
-jack.route(function(domain, callback) {
+jack.route(function(data, callback) {
 	callback(null, '127.0.0.1');
 });
 
 // route all google domains to 127.0.0.1
-jack.route(['google.com', '*.google.com'], function(domain, callback) {
+jack.route(['google.com', '*.google.com'], function(data, callback) {
 	callback(null, '127.0.0.1');
 });
 
@@ -42,8 +42,15 @@ You can also use it to monitor your DNS resolutions which can be super useful fo
 ``` js
 var jack = require('dnsjack').createServer();
 
-jack.on('resolve', function(domain) {
-	console.log('Someone is resolving', domain);
+jack.on('resolve', function(data) {
+	console.log(data.rinfo.address, 'is resolving', data.domain);
 });
 jack.listen();
+```
+
+You can also pass along the TTL when responding to a DNS request:
+```js
+jack.route(['google.com', '*.google.com'], function(data, callback) {
+    callback(null, {ip: '127.0.0.1', ttl: 3600});
+});
 ```
