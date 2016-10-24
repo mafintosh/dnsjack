@@ -98,9 +98,9 @@ var responseBuffer = function(query) {
 	var offset = 16+qname.length;
 	var length = offset;
 
-    for (var i = 0; i < query.rr.length; i++) {
+  for (var i = 0; i < query.rr.length; i++) {
 		length += query.rr[i].qname.length+14;
-    }
+  }
 
 	var buf = new Buffer(length);
 
@@ -114,7 +114,7 @@ var responseBuffer = function(query) {
 	buf.writeUInt16BE(header.nscount, 8);
 	buf.writeUInt16BE(header.arcount, 10);
 
-    qname.copy(buf, 12);
+	qname.copy(buf, 12);
 
 	question.qtype.copy(buf, 12+qname.length, question.qtype, 2);
 	question.qclass.copy(buf, 12+qname.length+2, question.qclass, 2);
@@ -133,9 +133,9 @@ var responseBuffer = function(query) {
 		buf.writeUInt32BE(rr.rdata, offset+10);
 
 		offset += 14;
-    }
+	}
 
-    return buf;
+	return buf;
 };
 
 var response = function(query, ttl, to) {
