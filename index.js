@@ -192,6 +192,7 @@ exports.createServer = function(proxy) {
 	var that = new EventEmitter();
 	var server = dgram.createSocket('udp4');
 	var routes = [];
+	var filters = [];
 
 	server.on('message', function (message, rinfo) {
 		var query = parse(message);
@@ -213,13 +214,23 @@ exports.createServer = function(proxy) {
 			that.emit('error', err);
 		};
 
+		var filter = function (buf) {
+			if (filters.length <= 0) { return buf; }
+
+			filters.forEach(function (f) {
+				buf = f(buf, parse) || buf;
+			});
+
+			return buf;
+		};
+
 		var onproxy = function() {
 			var sock = dgram.createSocket('udp4');
 
 			sock.send(message, 0, message.length, 53, proxy);
 			sock.on('error', onerror);
 			sock.on('message', function(response) {
-				respond(response);
+				respond(filter(response));
 				sock.close();
 			});
 		};
@@ -271,6 +282,10 @@ exports.createServer = function(proxy) {
 		routes.push({pattern:pattern, route:route});
 
 		return that;
+	};
+
+	that.filter = function (filter) {
+		filters.push(filter);
 	};
 
 	that.listen = function(port) {
