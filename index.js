@@ -30,10 +30,11 @@ var bufferifyV4 = function(ip) {
 }
 
 var bufferifyV6 = function(ip) {
+	// Thanks to https://github.com/fc00/node-pad-ipv6
 	var countColons = function (x) {
-    	var n = 0;
-    	x.replace(/:/g, function (c) { n++; });
-    	return n;
+		var n = 0;
+		x.replace(/:/g, function (c) { n++; });
+		return n;
 	};
 
 	// remove subnet and zone strings
