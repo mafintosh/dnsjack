@@ -29,7 +29,7 @@ var bufferifyV4 = function(ip) {
 	return buf;
 }
 
-var bufferifyV6 = function(ip) {
+var bufferifyV6 = function(rawIp) {
 	// Thanks to https://github.com/fc00/node-pad-ipv6
 	var countColons = function (x) {
 		var n = 0;
@@ -38,9 +38,9 @@ var bufferifyV6 = function(ip) {
 	};
 
 	// remove subnet and zone strings
-	ip = ip.replace(/\/\d{1,3}(?=%|$)/, '').replace(/%.*$/, '')
+	var ip = rawIp.replace(/\/\d{1,3}(?=%|$)/, '').replace(/%.*$/, '')
 
-	hexIp = ip.replace(/::/, function (two) {
+	var hexIp = ip.replace(/::/, function (two) {
         return ':' + Array((7 - countColons(ip)) + 1).join(':') + ':';
     })
     .split(':')
