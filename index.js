@@ -7,7 +7,11 @@ var bitSlice = function(b, offset, length) {
 	return (b >>> (7-(offset+length-1))) & ~(0xff << length);
 };
 
-var numify = function(ip) {
+var bufferify = function(ip) {
+	return net.isIPv6(ip) ? bufferifyV6(ip) : bufferifyV4(ip);
+}
+
+var bufferifyV4 = function(ip) {
 	ip = ip.split('.').map(function(n) {
 		return parseInt(n, 10);
 	});
@@ -20,7 +24,31 @@ var numify = function(ip) {
 		base *= 256;
 	}
 
-	return result;
+	var buf = Buffer.alloc(4);
+	buf.writeUInt32BE(result);
+	return buf;
+}
+
+var bufferifyV6 = function(rawIp) {
+	// Thanks to https://github.com/fc00/node-pad-ipv6
+	var countColons = function (x) {
+		var n = 0;
+		x.replace(/:/g, function (c) { n++; });
+		return n;
+	};
+
+	// remove subnet and zone strings
+	var ip = rawIp.replace(/\/\d{1,3}(?=%|$)/, '').replace(/%.*$/, '')
+
+	var hexIp = ip.replace(/::/, function (two) {
+        return ':' + Array((7 - countColons(ip)) + 1).join(':') + ':';
+    })
+    .split(':')
+    .map(function (x) {
+        return Array(4-x.length).fill('0').join("") + x;
+    }).join('');
+
+	return Buffer.from(hexIp, 'hex')
 };
 
 var domainify = function(qname) {
@@ -99,7 +127,7 @@ var responseBuffer = function(query) {
 	var length = offset;
 
     for (var i = 0; i < query.rr.length; i++) {
-		length += query.rr[i].qname.length+14;
+		length += query.rr[i].qname.length+10;
     }
 
 	var buf = new Buffer(length);
@@ -130,7 +158,7 @@ var responseBuffer = function(query) {
 		buf.writeUInt16BE(rr.qclass, offset+2);
 		buf.writeUInt32BE(rr.ttl, offset+4);
 		buf.writeUInt16BE(rr.rdlength, offset+8);
-		buf.writeUInt32BE(rr.rdata, offset+10);
+		buf = Buffer.concat([buf, rr.rdata]);
 
 		offset += 14;
     }
@@ -172,10 +200,10 @@ var resolve = function(qname, ttl, to) {
 	var r = {};
 
 	r.qname = qname;
-	r.qtype = 1;
+	r.qtype = (to.length == 4 ? 1 : 28); // A or AAAA record
 	r.qclass = 1;
 	r.ttl = ttl;
-	r.rdlength = 4;
+	r.rdlength = to.length;
 	r.rdata = to;
 
 	return [r];
@@ -190,7 +218,7 @@ exports.createServer = function(proxy) {
 	proxy = proxy || '8.8.8.8';
 
 	var that = new EventEmitter();
-	var server = dgram.createSocket('udp4');
+	var server = dgram.createSocket('udp6');
 	var routes = [];
 
 	server.on('message', function (message, rinfo) {
@@ -214,7 +242,7 @@ exports.createServer = function(proxy) {
 		};
 
 		var onproxy = function() {
-			var sock = dgram.createSocket('udp4');
+			var sock = dgram.createSocket(net.isIPv6(proxy) ? 'udp6' : 'udp4');
 
 			sock.send(message, 0, message.length, 53, proxy);
 			sock.on('error', onerror);
@@ -251,7 +279,7 @@ exports.createServer = function(proxy) {
 			lookup(toIp, function(err, addr) {
 				if (err) return onerror(err);
 				that.emit('route', domain, addr);
-				respond(response(query, ttl, numify(addr)));
+				respond(response(query, ttl, bufferify(addr)));
 			});
 		});
 
