@@ -214,8 +214,9 @@ var lookup = function(addr, callback) {
 	dns.lookup(addr, callback);
 };
 
-exports.createServer = function(proxy) {
+exports.createServer = function(proxy, proxyPort) {
 	proxy = proxy || '8.8.8.8';
+	proxyPort = proxyPort || 53;
 
 	var that = new EventEmitter();
 	var server = dgram.createSocket('udp6');
@@ -244,7 +245,7 @@ exports.createServer = function(proxy) {
 		var onproxy = function() {
 			var sock = dgram.createSocket(net.isIPv6(proxy) ? 'udp6' : 'udp4');
 
-			sock.send(message, 0, message.length, 53, proxy);
+			sock.send(message, 0, message.length, proxyPort, proxy);
 			sock.on('error', onerror);
 			sock.on('message', function(response) {
 				respond(response);
